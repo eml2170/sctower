@@ -8,6 +8,10 @@ Defend your base against waves of Zerg units by strategically placing Terran def
 
 ## Features
 
+- **Custom Graphics and Sound Effects**:
+  - Unique artwork for each Terran and Zerg unit
+  - Sound effects for attacks, unit deaths, building, selling, and game events
+
 - **Phase-based gameplay:**
   - Build Phase: 30 seconds to place and upgrade defensive structures
   - Wave Phase: Fixed number of Zerg units attack in waves
@@ -48,6 +52,16 @@ Defend your base against waves of Zerg units by strategically placing Terran def
 1. Ensure Python is installed on your system
 2. Install Pygame: `pip install pygame`
 3. Run the game: `python game.py`
+
+## Asset Generation
+
+The game includes:
+- Auto-generated placeholder graphics for all units
+- Procedurally generated sound effects
+
+For custom assets:
+- Place custom unit images in the `assets/images/` directory
+- Place custom sound effects in the `assets/sounds/` directory
 
 ## Tips for Success
 

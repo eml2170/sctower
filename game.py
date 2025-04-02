@@ -2,9 +2,11 @@ import pygame
 import sys
 import math
 import random
+import os
 
 # Initialize pygame
 pygame.init()
+pygame.mixer.init()
 
 # Screen dimensions
 SCREEN_WIDTH = 800
@@ -26,6 +28,118 @@ YELLOW = (255, 255, 0)
 FPS = 60
 clock = pygame.time.Clock()
 game_font = pygame.font.SysFont("Arial", 24)
+
+# Asset paths
+ASSET_DIR = "assets"
+IMG_DIR = os.path.join(ASSET_DIR, "images")
+SOUND_DIR = os.path.join(ASSET_DIR, "sounds")
+
+# Create directories if they don't exist
+os.makedirs(IMG_DIR, exist_ok=True)
+os.makedirs(SOUND_DIR, exist_ok=True)
+
+# Load images
+def load_image(name, scale=1.0):
+    try:
+        image = pygame.image.load(os.path.join(IMG_DIR, name))
+        if scale != 1.0:
+            new_size = (int(image.get_width() * scale), int(image.get_height() * scale))
+            image = pygame.transform.scale(image, new_size)
+        return image
+    except pygame.error:
+        # If image is not found, create a placeholder surface
+        placeholder = pygame.Surface((40, 40))
+        placeholder.fill(WHITE)
+        pygame.draw.rect(placeholder, BLACK, (0, 0, 40, 40), 2)
+        return placeholder
+
+# Create placeholder images for use until real assets are added
+def create_placeholder_images():
+    # Create Marine placeholder
+    marine_img = pygame.Surface((40, 40), pygame.SRCALPHA)
+    pygame.draw.circle(marine_img, BLUE, (20, 20), 18)
+    pygame.draw.circle(marine_img, BLACK, (20, 20), 18, 2)
+    pygame.draw.rect(marine_img, BLACK, (10, 5, 20, 15))
+    pygame.image.save(marine_img, os.path.join(IMG_DIR, "marine.png"))
+    
+    # Create Firebat placeholder
+    firebat_img = pygame.Surface((40, 40), pygame.SRCALPHA)
+    pygame.draw.circle(firebat_img, RED, (20, 20), 18)
+    pygame.draw.circle(firebat_img, BLACK, (20, 20), 18, 2)
+    pygame.draw.polygon(firebat_img, BLACK, [(10, 10), (30, 10), (20, 25)])
+    pygame.image.save(firebat_img, os.path.join(IMG_DIR, "firebat.png"))
+    
+    # Create Tank placeholder
+    tank_img = pygame.Surface((40, 40), pygame.SRCALPHA)
+    pygame.draw.circle(tank_img, GRAY, (20, 20), 18)
+    pygame.draw.circle(tank_img, BLACK, (20, 20), 18, 2)
+    pygame.draw.rect(tank_img, BLACK, (10, 15, 20, 10))
+    pygame.draw.rect(tank_img, BLACK, (15, 10, 10, 20))
+    pygame.image.save(tank_img, os.path.join(IMG_DIR, "tank.png"))
+    
+    # Create Zergling placeholder
+    zergling_img = pygame.Surface((30, 30), pygame.SRCALPHA)
+    pygame.draw.circle(zergling_img, (150, 0, 0), (15, 15), 13)
+    pygame.draw.circle(zergling_img, BLACK, (15, 15), 13, 2)
+    pygame.draw.line(zergling_img, BLACK, (5, 5), (10, 10), 2)
+    pygame.draw.line(zergling_img, BLACK, (25, 5), (20, 10), 2)
+    pygame.image.save(zergling_img, os.path.join(IMG_DIR, "zergling.png"))
+    
+    # Create Hydralisk placeholder
+    hydralisk_img = pygame.Surface((30, 30), pygame.SRCALPHA)
+    pygame.draw.circle(hydralisk_img, (0, 150, 0), (15, 15), 13)
+    pygame.draw.circle(hydralisk_img, BLACK, (15, 15), 13, 2)
+    pygame.draw.polygon(hydralisk_img, BLACK, [(5, 5), (25, 5), (15, 25)])
+    pygame.image.save(hydralisk_img, os.path.join(IMG_DIR, "hydralisk.png"))
+    
+    # Create Ultralisk placeholder
+    ultralisk_img = pygame.Surface((30, 30), pygame.SRCALPHA)
+    pygame.draw.circle(ultralisk_img, (150, 0, 150), (15, 15), 13)
+    pygame.draw.circle(ultralisk_img, BLACK, (15, 15), 13, 2)
+    pygame.draw.polygon(ultralisk_img, BLACK, [(5, 10), (25, 10), (15, 3)])
+    pygame.draw.polygon(ultralisk_img, BLACK, [(5, 20), (25, 20), (15, 27)])
+    pygame.image.save(ultralisk_img, os.path.join(IMG_DIR, "ultralisk.png"))
+
+# Load sound effects
+def load_sound(name):
+    try:
+        sound = pygame.mixer.Sound(os.path.join(SOUND_DIR, name))
+        return sound
+    except pygame.error:
+        # Return a dummy sound if file not found
+        return pygame.mixer.Sound(buffer=bytes([0]))
+
+# Create placeholder WAV files for sounds
+def create_placeholder_sounds():
+    # We can't easily create sound files in code, so let's skip this for now
+    # In a real implementation, you would distribute sound files with your game
+    pass
+
+# Generate placeholder assets if they don't exist yet
+create_placeholder_images()
+create_placeholder_sounds()
+
+# Load images
+marine_img = load_image("marine.png")
+firebat_img = load_image("firebat.png")
+tank_img = load_image("tank.png")
+zergling_img = load_image("zergling.png")
+hydralisk_img = load_image("hydralisk.png")
+ultralisk_img = load_image("ultralisk.png")
+
+# Load sounds (commented out until real sound files are available)
+# We define these here but the actual sound loading will happen when the files exist
+# build_sound = load_sound("build.wav")
+upgrade_sound = load_sound("upgrade.wav")
+sell_sound = load_sound("sell.wav")
+marine_attack_sound = load_sound("marine_attack.wav")
+firebat_attack_sound = load_sound("firebat_attack.wav")
+tank_attack_sound = load_sound("tank_attack.wav")
+zergling_death_sound = load_sound("zergling_death.wav")
+hydralisk_death_sound = load_sound("hydralisk_death.wav")
+ultralisk_death_sound = load_sound("ultralisk_death.wav")
+wave_start_sound = load_sound("wave_start.wav")
+game_over_sound = load_sound("game_over.wav")
 
 # Player stats
 minerals = 200
@@ -55,18 +169,24 @@ class Tower:
             self.fire_rate = 30
             self.cost = (50, 0)  # (minerals, gas)
             self.color = BLUE
+            self.image = marine_img
+            self.attack_sound = marine_attack_sound
         elif tower_type == "firebat":
             self.damage = 12
             self.range = 100
             self.fire_rate = 45
             self.cost = (75, 25)
             self.color = RED
+            self.image = firebat_img
+            self.attack_sound = firebat_attack_sound
         elif tower_type == "tank":
             self.damage = 30
             self.range = 200
             self.fire_rate = 90
             self.cost = (150, 75)
             self.color = GRAY
+            self.image = tank_img
+            self.attack_sound = tank_attack_sound
         
         self.targets = []
     
@@ -83,6 +203,9 @@ class Tower:
             target = self.targets[0][0]
             target.hp -= self.damage
             
+            # Play attack sound
+            self.attack_sound.play()
+            
             # Reset cooldown
             self.cooldown = self.fire_rate
             
@@ -95,16 +218,18 @@ class Tower:
             self.cooldown -= 1
     
     def draw(self, surface):
-        pygame.draw.circle(surface, self.color, (self.x, self.y), 20)
-        pygame.draw.circle(surface, BLACK, (self.x, self.y), 20, 2)
+        # Draw tower image
+        img_rect = self.image.get_rect(center=(self.x, self.y))
+        surface.blit(self.image, img_rect)
         
         # Draw range circle (only when selected)
         if self == selected_tower:
             pygame.draw.circle(surface, self.color, (self.x, self.y), self.range, 1)
         
         # Draw tower level
-        level_text = game_font.render(str(self.level), True, BLACK)
-        surface.blit(level_text, (self.x - 5, self.y - 10))
+        level_text = game_font.render(str(self.level), True, WHITE)
+        level_rect = level_text.get_rect(center=(self.x, self.y + 25))
+        surface.blit(level_text, level_rect)
 
 class Enemy:
     def __init__(self, path, enemy_type):
@@ -122,6 +247,8 @@ class Enemy:
             self.reward = (8, 0)  # (minerals, gas)
             self.damage = 1
             self.color = (150, 0, 0)
+            self.image = zergling_img
+            self.death_sound = zergling_death_sound
         elif enemy_type == "hydralisk":
             self.hp = 80
             self.max_hp = 80
@@ -129,6 +256,8 @@ class Enemy:
             self.reward = (15, 5)
             self.damage = 2
             self.color = (0, 150, 0)
+            self.image = hydralisk_img
+            self.death_sound = hydralisk_death_sound
         elif enemy_type == "ultralisk":
             self.hp = 300
             self.max_hp = 300
@@ -136,6 +265,8 @@ class Enemy:
             self.reward = (30, 15)
             self.damage = 5
             self.color = (150, 0, 150)
+            self.image = ultralisk_img
+            self.death_sound = ultralisk_death_sound
     
     def update(self):
         if self.path_index < len(self.path) - 1:
@@ -158,13 +289,16 @@ class Enemy:
         # Check if enemy died
         if self.hp <= 0:
             self.dead = True
+            # Play death sound
+            self.death_sound.play()
             return False
         
         return False
     
     def draw(self, surface):
-        # Draw enemy
-        pygame.draw.circle(surface, self.color, (int(self.x), int(self.y)), 15)
+        # Draw enemy image
+        img_rect = self.image.get_rect(center=(int(self.x), int(self.y)))
+        surface.blit(self.image, img_rect)
         
         # Draw health bar
         bar_width = 30
@@ -249,6 +383,9 @@ def start_wave_phase():
     current_phase = PHASE_WAVE
     remaining_zerg = calculate_wave_size()
     phase_timer = max(5, 30 - wave) * FPS  # Time between spawns decreases with wave
+    
+    # Play wave start sound
+    wave_start_sound.play()
 
 def start_build_phase():
     global current_phase, phase_timer, minerals, gas, wave
@@ -425,11 +562,15 @@ while running:
                         selected_tower.damage = int(selected_tower.damage * 1.5)
                         selected_tower.range = int(selected_tower.range * 1.2)
                         selected_tower.fire_rate = max(10, int(selected_tower.fire_rate * 0.8))
+                        # Play upgrade sound
+                        upgrade_sound.play()
                 elif selected_tower and SCREEN_WIDTH - 80 <= mouse_x <= SCREEN_WIDTH - 10 and SCREEN_HEIGHT - 180 <= mouse_y <= SCREEN_HEIGHT - 150:
                     # Sell tower
                     minerals += int(selected_tower.cost[0] * 0.7 * selected_tower.level)
                     towers.remove(selected_tower)
                     selected_tower = None
+                    # Play sell sound
+                    sell_sound.play()
                 else:
                     # Check if a tower is clicked
                     selected_tower = None
@@ -447,6 +588,8 @@ while running:
                             minerals -= mineral_cost
                             gas -= gas_cost
                             towers.append(new_tower)
+                            # Play build sound
+                            # build_sound.play()
     
     if game_over:
         # Display game over screen
@@ -458,6 +601,11 @@ while running:
         screen.blit(game_over_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 50))
         screen.blit(score_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2))
         screen.blit(restart_text, (SCREEN_WIDTH//2 - 90, SCREEN_HEIGHT//2 + 50))
+        
+        # Play game over sound once
+        if lives == 0:
+            game_over_sound.play()
+            lives = -1  # Set to -1 to prevent repeated sound playing
         
         pygame.display.flip()
         continue
