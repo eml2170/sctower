@@ -6,22 +6,22 @@ STARTING_LIVES = 15
 # Tower stats
 MARINE_STATS = {
     "damage": 5,
-    "range": 150,
+    "range": 120,
     "fire_rate": 30,  # dps=0.16
     "cost": (50, 0),  # (minerals, gas)
 }
 
 FIREBAT_STATS = {
-    "damage": 12,
-    "range": 90,
-    "fire_rate": 50,  # dps=0.24
+    "damage": 16,
+    "range": 40,
+    "fire_rate": 50,  # dps=0.32
     "cost": (75, 25),
 }
 
 TANK_STATS = {
-    "damage": 30,
+    "damage": 40,
     "range": 180,
-    "fire_rate": 90,  #dps=0.33
+    "fire_rate": 90,  #dps=0.44
     "cost": (150, 75),
 }
 

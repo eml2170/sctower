@@ -106,7 +106,7 @@ generate_tone("sell.wav", frequency=330, duration=0.3, volume=0.3)
 # Unit attack sounds
 generate_attack_sound("marine_attack.wav", base_freq=880, duration=0.1, volume=0.3)
 generate_attack_sound("firebat_attack.wav", base_freq=440, duration=0.3, volume=0.5)
-generate_attack_sound("tank_attack.wav", base_freq=660, duration=0.2, volume=0.6)
+generate_attack_sound("tank_attack.wav", base_freq=220, duration=0.4, volume=0.7)
 
 # Death sounds
 generate_explosion("zergling_death.wav", duration=0.2, volume=0.4)

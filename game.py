@@ -158,6 +158,241 @@ current_phase = PHASE_BUILD
 phase_timer = 30 * FPS  # 30 seconds for build phase
 remaining_zerg = 0
 
+class Projectile:
+    def __init__(self, start_x, start_y, end_x, end_y, tower_type, damage, aoe_radius=0):
+        self.start_x = start_x
+        self.start_y = start_y
+        self.end_x = end_x
+        self.end_y = end_y
+        self.tower_type = tower_type
+        self.damage = damage
+        self.aoe_radius = aoe_radius
+        
+        # Increase lifetime for better visuals
+        if tower_type == "marine":
+            self.lifetime = 20  # Shorter for bullets
+        elif tower_type == "firebat":
+            self.lifetime = 25  # Medium for flames
+        else:  # Tank
+            self.lifetime = 45  # Longer for tank shells/explosions
+            
+        self.current_frame = 0
+        self.speed = 10  # Slower speed for better visuals
+        
+        # Calculate direction vector
+        dx = end_x - start_x
+        dy = end_y - start_y
+        distance = math.sqrt(dx**2 + dy**2)
+        self.dx = dx / distance * self.speed
+        self.dy = dy / distance * self.speed
+        
+        # Calculate angle for cone direction
+        self.angle = math.atan2(dy, dx)
+        
+        # Current position
+        self.x = start_x
+        self.y = start_y
+        
+        # For AoE effects
+        self.exploded = False
+        self.explosion_radius = 0
+        self.max_explosion_radius = aoe_radius
+        self.explosion_duration = 0  # Track how long explosion has been active
+        
+        # For flame effects
+        self.flame_width = 0.3  # Starting width in radians
+        self.cone_length = 15  # Length of the flame cone
+        
+    def update(self):
+        if not self.exploded:
+            # Move projectile
+            self.x += self.dx
+            self.y += self.dy
+            
+            # Check if reached target
+            distance_to_target = math.sqrt((self.end_x - self.x)**2 + (self.end_y - self.y)**2)
+            if distance_to_target < self.speed:
+                self.exploded = True
+                self.explosion_duration = 0
+                
+            # For firebat: make flame wider as it travels
+            if self.tower_type == "firebat" and self.flame_width < 0.8:
+                self.flame_width += 0.05
+                self.cone_length += 2  # Make the cone longer as it travels
+        else:
+            # Track explosion duration
+            self.explosion_duration += 1
+            
+            # Expand explosion (faster for more impact)
+            if self.tower_type == "tank":
+                self.explosion_radius = min(self.max_explosion_radius, 
+                                         self.explosion_radius + self.max_explosion_radius / 5)
+            elif self.tower_type == "firebat":
+                # For firebat, we don't need to grow the explosion radius much
+                # since we'll draw the explosion as an extension of the cone
+                self.explosion_radius = min(self.max_explosion_radius,
+                                         self.explosion_radius + self.max_explosion_radius / 3)
+        
+        self.current_frame += 1
+        
+        # Keep explosion alive for at least 20 frames
+        if self.exploded and self.explosion_duration < 20:
+            return True
+            
+        return self.current_frame < self.lifetime
+    
+    def draw(self, surface):
+        if not self.exploded:
+            if self.tower_type == "marine":
+                # Draw bullet with tracer effect
+                pygame.draw.circle(surface, YELLOW, (int(self.x), int(self.y)), 3)
+                # Add bullet trail
+                trail_length = 15
+                trail_end_x = self.x - self.dx * trail_length / self.speed
+                trail_end_y = self.y - self.dy * trail_length / self.speed
+                pygame.draw.line(surface, (255, 255, 100), (self.x, self.y), 
+                                (trail_end_x, trail_end_y), 2)
+            elif self.tower_type == "firebat":
+                # Draw flame cone with random flicker
+                flame_length = self.cone_length + random.randint(-5, 5)  # Random flicker
+                cone_width = self.flame_width
+                
+                # Create base cone shape
+                points = [
+                    (self.x, self.y),
+                    (self.x + math.cos(self.angle + cone_width) * flame_length * 0.8, 
+                     self.y + math.sin(self.angle + cone_width) * flame_length * 0.8),
+                    (self.x + math.cos(self.angle) * flame_length * 1.2, 
+                     self.y + math.sin(self.angle) * flame_length * 1.2),
+                    (self.x + math.cos(self.angle - cone_width) * flame_length * 0.8, 
+                     self.y + math.sin(self.angle - cone_width) * flame_length * 0.8)
+                ]
+                
+                # Draw multiple flame layers with different colors
+                # Base layer (darker orange)
+                pygame.draw.polygon(surface, (230, 100, 20), points)
+                
+                # Inner cone (brighter yellow-orange)
+                inner_width = cone_width * 0.6
+                inner_points = [
+                    (self.x, self.y),
+                    (self.x + math.cos(self.angle + inner_width) * flame_length * 0.6, 
+                     self.y + math.sin(self.angle + inner_width) * flame_length * 0.6),
+                    (self.x + math.cos(self.angle) * flame_length * 0.9, 
+                     self.y + math.sin(self.angle) * flame_length * 0.9),
+                    (self.x + math.cos(self.angle - inner_width) * flame_length * 0.6, 
+                     self.y + math.sin(self.angle - inner_width) * flame_length * 0.6)
+                ]
+                pygame.draw.polygon(surface, (255, 180, 50), inner_points)
+                
+                # Core (white-yellow)
+                core_width = cone_width * 0.3
+                core_points = [
+                    (self.x, self.y),
+                    (self.x + math.cos(self.angle + core_width) * flame_length * 0.4, 
+                     self.y + math.sin(self.angle + core_width) * flame_length * 0.4),
+                    (self.x + math.cos(self.angle) * flame_length * 0.6, 
+                     self.y + math.sin(self.angle) * flame_length * 0.6),
+                    (self.x + math.cos(self.angle - core_width) * flame_length * 0.4, 
+                     self.y + math.sin(self.angle - core_width) * flame_length * 0.4)
+                ]
+                pygame.draw.polygon(surface, (255, 230, 150), core_points)
+                
+                # Add some random flickers/sparks
+                for _ in range(3):
+                    spark_angle = self.angle + random.uniform(-cone_width, cone_width)
+                    spark_dist = random.uniform(0.5, 0.9) * flame_length
+                    spark_x = self.x + math.cos(spark_angle) * spark_dist
+                    spark_y = self.y + math.sin(spark_angle) * spark_dist
+                    spark_size = random.uniform(1.5, 3.0)
+                    pygame.draw.circle(surface, (255, 255, 200), (int(spark_x), int(spark_y)), int(spark_size))
+                
+            elif self.tower_type == "tank":
+                # Draw tank shell with smoke trail
+                pygame.draw.circle(surface, GRAY, (int(self.x), int(self.y)), 5)
+                
+                # Draw smoke trail (more visible)
+                for i in range(7):
+                    trail_x = self.x - self.dx * (i * 3) / self.speed
+                    trail_y = self.y - self.dy * (i * 3) / self.speed
+                    size = 5 - i * 0.6
+                    smoke_color = (120 - i * 10, 120 - i * 10, 120 - i * 10)
+                    pygame.draw.circle(surface, smoke_color, (int(trail_x), int(trail_y)), int(size))
+        else:
+            # Draw explosion effects
+            if self.tower_type == "tank":
+                # Multi-layered explosion with shockwave
+                colors = [
+                    (255, 200, 50),  # Bright yellow core
+                    (255, 140, 0),   # Orange middle
+                    (200, 0, 0),     # Red outer
+                    (100, 100, 100)  # Gray smoke ring
+                ]
+                
+                # Scale down the explosion in the last frames
+                scale_factor = 1.0
+                if self.explosion_duration > 15:
+                    scale_factor = max(0.5, 1.0 - (self.explosion_duration - 15) / 10)
+                
+                for i, color in enumerate(colors):
+                    radius = self.explosion_radius * (0.8 - i * 0.2) * scale_factor
+                    if radius > 0:
+                        pygame.draw.circle(surface, color, (int(self.end_x), int(self.end_y)), 
+                                        int(radius))
+                
+                # Draw shockwave ring
+                if self.explosion_radius > 10:
+                    pygame.draw.circle(surface, WHITE, (int(self.end_x), int(self.end_y)), 
+                                     int(self.explosion_radius * scale_factor), 2)
+            
+            elif self.tower_type == "firebat" and self.explosion_radius > 0:
+                # Continue the cone explosion but fade it out
+                flame_length = self.cone_length + self.explosion_radius * 0.5
+                cone_width = self.flame_width * (1 + self.explosion_duration * 0.02)
+                fade_factor = max(0, 1.0 - self.explosion_duration / 20)
+                
+                # Base cone with larger width at the end
+                points = [
+                    (self.x, self.y),
+                    (self.x + math.cos(self.angle + cone_width) * flame_length * 0.9, 
+                     self.y + math.sin(self.angle + cone_width) * flame_length * 0.9),
+                    (self.x + math.cos(self.angle) * flame_length * 1.3, 
+                     self.y + math.sin(self.angle) * flame_length * 1.3),
+                    (self.x + math.cos(self.angle - cone_width) * flame_length * 0.9, 
+                     self.y + math.sin(self.angle - cone_width) * flame_length * 0.9)
+                ]
+                
+                # Adjust colors to fade out
+                base_color = (int(230 * fade_factor), int(100 * fade_factor), int(20 * fade_factor))
+                inner_color = (int(255 * fade_factor), int(180 * fade_factor), int(50 * fade_factor))
+                core_color = (int(255 * fade_factor), int(230 * fade_factor), int(150 * fade_factor))
+                
+                pygame.draw.polygon(surface, base_color, points)
+                
+                # Smaller inner cone
+                inner_width = cone_width * 0.7
+                inner_points = [
+                    (self.x, self.y),
+                    (self.x + math.cos(self.angle + inner_width) * flame_length * 0.7, 
+                     self.y + math.sin(self.angle + inner_width) * flame_length * 0.7),
+                    (self.x + math.cos(self.angle) * flame_length * 1.0, 
+                     self.y + math.sin(self.angle) * flame_length * 1.0),
+                    (self.x + math.cos(self.angle - inner_width) * flame_length * 0.7, 
+                     self.y + math.sin(self.angle - inner_width) * flame_length * 0.7)
+                ]
+                pygame.draw.polygon(surface, inner_color, inner_points)
+                
+                # Add some random flickers/sparks at the end of the cone
+                for _ in range(5):
+                    # Place sparks mostly near the end of the cone
+                    end_angle = self.angle + random.uniform(-cone_width * 0.8, cone_width * 0.8)
+                    end_dist = flame_length * random.uniform(0.8, 1.1)
+                    spark_x = self.x + math.cos(end_angle) * end_dist
+                    spark_y = self.y + math.sin(end_angle) * end_dist
+                    spark_size = random.uniform(1.5, 4.0) * fade_factor
+                    spark_color = (int(255 * fade_factor), int(255 * fade_factor), int(200 * fade_factor))
+                    pygame.draw.circle(surface, spark_color, (int(spark_x), int(spark_y)), int(spark_size))
+
 class Tower:
     def __init__(self, x, y, tower_type):
         self.x = x
@@ -174,6 +409,7 @@ class Tower:
             self.color = BLUE
             self.image = marine_img
             self.attack_sound = marine_attack_sound
+            self.aoe_radius = 0  # No AoE for marines
         elif tower_type == "firebat":
             self.damage = FIREBAT_STATS["damage"]
             self.range = FIREBAT_STATS["range"]
@@ -182,6 +418,7 @@ class Tower:
             self.color = RED
             self.image = firebat_img
             self.attack_sound = firebat_attack_sound
+            self.aoe_radius = 10  # Small AoE for firebats
         elif tower_type == "tank":
             self.damage = TANK_STATS["damage"]
             self.range = TANK_STATS["range"]
@@ -190,6 +427,7 @@ class Tower:
             self.color = GRAY
             self.image = tank_img
             self.attack_sound = tank_attack_sound
+            self.aoe_radius = 30  # Large AoE for tanks
         
         self.targets = []
     
@@ -204,7 +442,47 @@ class Tower:
     def attack(self, enemies):
         if self.cooldown <= 0 and self.targets:
             target = self.targets[0][0]
+            
+            # Create projectile
+            projectile = Projectile(self.x, self.y, target.x, target.y, 
+                                 self.tower_type, self.damage, self.aoe_radius)
+            
+            # Apply damage to primary target
             target.hp -= self.damage
+            
+            # Apply AoE damage if applicable
+            if self.aoe_radius > 0:
+                if self.tower_type == "firebat":
+                    # Firebat: Only damage enemies in a cone shape in the direction of the target
+                    # Calculate angle to target
+                    angle_to_target = math.atan2(target.y - self.y, target.x - self.x)
+                    cone_width = 0.8  # Cone width in radians (about 45 degrees)
+                    
+                    for enemy in enemies:
+                        if enemy != target:  # Don't damage primary target twice
+                            # Calculate angle to this enemy
+                            angle_to_enemy = math.atan2(enemy.y - self.y, enemy.x - self.x)
+                            
+                            # Find the angular difference
+                            angle_diff = abs((angle_to_enemy - angle_to_target + math.pi) % (2 * math.pi) - math.pi)
+                            
+                            # Check if enemy is within the cone and within range
+                            distance = math.sqrt((self.x - enemy.x)**2 + (self.y - enemy.y)**2)
+                            if angle_diff <= cone_width and distance <= self.aoe_radius:
+                                # Reduce damage based on distance and angle
+                                angle_factor = 1.0 - (angle_diff / cone_width)
+                                distance_factor = 1.0 - (distance / self.aoe_radius)
+                                aoe_damage = self.damage * angle_factor * distance_factor
+                                enemy.hp -= aoe_damage
+                else:
+                    # Tank: Circular AoE
+                    for enemy in enemies:
+                        if enemy != target:  # Don't damage primary target twice
+                            distance = math.sqrt((target.x - enemy.x)**2 + (target.y - enemy.y)**2)
+                            if distance <= self.aoe_radius:
+                                # Reduce damage based on distance
+                                aoe_damage = self.damage * (1 - distance / self.aoe_radius)
+                                enemy.hp -= aoe_damage
             
             # Play attack sound
             self.attack_sound.play()
@@ -212,8 +490,7 @@ class Tower:
             # Reset cooldown
             self.cooldown = self.fire_rate
             
-            # Return attack information
-            return (self.x, self.y, target.x, target.y)
+            return projectile
         return None
     
     def update(self):
@@ -538,11 +815,16 @@ def reset_game():
     remaining_zerg = 0
     towers = []
     enemies = []
-    projectiles = []
+    projectiles = []  # Make sure projectiles list is cleared
     selected_tower = None
     spawn_cooldown = 0
     game_over = False
     selected_tower_type = "marine"
+
+# Add debug function outside the main loop
+def draw_debug_info():
+    debug_text = game_font.render(f"Projectiles: {len(projectiles)}", True, WHITE)
+    screen.blit(debug_text, (10, 10))
 
 # Main game loop
 running = True
@@ -670,9 +952,9 @@ while running:
             for tower in towers:
                 tower.update()
                 tower.find_targets(enemies)
-                attack_info = tower.attack(enemies)
-                if attack_info:
-                    projectiles.append(attack_info)
+                new_projectile = tower.attack(enemies)
+                if new_projectile:
+                    projectiles.append(new_projectile)
             
             # Update enemies
             for enemy in enemies[:]:
@@ -687,8 +969,10 @@ while running:
                     score += enemy.max_hp
                     enemies.remove(enemy)
         
-        # Update projectiles (simplified as they just appear for one frame)
-        projectiles = []
+        # Update projectiles
+        for projectile in projectiles[:]:
+            if not projectile.update():
+                projectiles.remove(projectile)
     
     # Drawing
     screen.fill(BLACK)
@@ -706,11 +990,14 @@ while running:
         enemy.draw(screen)
     
     # Draw projectiles
-    for start_x, start_y, end_x, end_y in projectiles:
-        pygame.draw.line(screen, WHITE, (start_x, start_y), (end_x, end_y), 2)
+    for projectile in projectiles:
+        projectile.draw(screen)
     
     # Draw UI
     draw_ui()
+    
+    # Draw debug info
+    draw_debug_info()
     
     # Update display
     pygame.display.flip()
