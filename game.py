@@ -3,13 +3,14 @@ import sys
 import math
 import random
 import os
+from game_balance import *  # Import all balance parameters
 
 # Initialize pygame
 pygame.init()
 pygame.mixer.init()
 
 # Screen dimensions
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 840
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("StarCraft Tower Defense: Terran vs Zerg")
@@ -144,9 +145,9 @@ wave_start_sound = load_sound("wave_start.wav")
 game_over_sound = load_sound("game_over.wav")
 
 # Player stats
-minerals = 200
-gas = 50
-lives = 20
+minerals = STARTING_MINERALS
+gas = STARTING_GAS
+lives = STARTING_LIVES
 score = 0
 wave = 1
 
@@ -166,26 +167,26 @@ class Tower:
         self.cooldown = 0
         
         if tower_type == "marine":
-            self.damage = 5
-            self.range = 150
-            self.fire_rate = 30
-            self.cost = (50, 0)  # (minerals, gas)
+            self.damage = MARINE_STATS["damage"]
+            self.range = MARINE_STATS["range"]
+            self.fire_rate = MARINE_STATS["fire_rate"]
+            self.cost = MARINE_STATS["cost"]
             self.color = BLUE
             self.image = marine_img
             self.attack_sound = marine_attack_sound
         elif tower_type == "firebat":
-            self.damage = 12
-            self.range = 100
-            self.fire_rate = 45
-            self.cost = (75, 25)
+            self.damage = FIREBAT_STATS["damage"]
+            self.range = FIREBAT_STATS["range"]
+            self.fire_rate = FIREBAT_STATS["fire_rate"]
+            self.cost = FIREBAT_STATS["cost"]
             self.color = RED
             self.image = firebat_img
             self.attack_sound = firebat_attack_sound
         elif tower_type == "tank":
-            self.damage = 30
-            self.range = 200
-            self.fire_rate = 90
-            self.cost = (150, 75)
+            self.damage = TANK_STATS["damage"]
+            self.range = TANK_STATS["range"]
+            self.fire_rate = TANK_STATS["fire_rate"]
+            self.cost = TANK_STATS["cost"]
             self.color = GRAY
             self.image = tank_img
             self.attack_sound = tank_attack_sound
@@ -243,29 +244,29 @@ class Enemy:
         self.dead = False
         
         if enemy_type == "zergling":
-            self.hp = 30
-            self.max_hp = 30
-            self.speed = 2
-            self.reward = (8, 0)  # (minerals, gas)
-            self.damage = 1
+            self.hp = ZERGLING_STATS["hp"]
+            self.max_hp = ZERGLING_STATS["hp"]
+            self.speed = ZERGLING_STATS["speed"]
+            self.reward = ZERGLING_STATS["reward"]
+            self.damage = ZERGLING_STATS["damage"]
             self.color = (150, 0, 0)
             self.image = zergling_img
             self.death_sound = zergling_death_sound
         elif enemy_type == "hydralisk":
-            self.hp = 80
-            self.max_hp = 80
-            self.speed = 1.5
-            self.reward = (15, 5)
-            self.damage = 2
+            self.hp = HYDRALISK_STATS["hp"]
+            self.max_hp = HYDRALISK_STATS["hp"]
+            self.speed = HYDRALISK_STATS["speed"]
+            self.reward = HYDRALISK_STATS["reward"]
+            self.damage = HYDRALISK_STATS["damage"]
             self.color = (0, 150, 0)
             self.image = hydralisk_img
             self.death_sound = hydralisk_death_sound
         elif enemy_type == "ultralisk":
-            self.hp = 300
-            self.max_hp = 300
-            self.speed = 0.8
-            self.reward = (30, 15)
-            self.damage = 5
+            self.hp = ULTRALISK_STATS["hp"]
+            self.max_hp = ULTRALISK_STATS["hp"]
+            self.speed = ULTRALISK_STATS["speed"]
+            self.reward = ULTRALISK_STATS["reward"]
+            self.damage = ULTRALISK_STATS["damage"]
             self.color = (150, 0, 150)
             self.image = ultralisk_img
             self.death_sound = ultralisk_death_sound
@@ -345,10 +346,9 @@ selected_tower_type = "marine"
 
 def calculate_wave_size():
     # Calculate number of zerg units for this wave
-    base_amount = 5
-    zergling_count = max(5, wave * 3)
-    hydralisk_count = max(0, (wave - 2) * 2)
-    ultralisk_count = max(0, wave - 4)
+    zergling_count = max(BASE_ZERGLING_COUNT, wave * ZERGLING_PER_WAVE)
+    hydralisk_count = max(0, (wave - HYDRALISK_WAVE_START) * HYDRALISK_PER_WAVE)
+    ultralisk_count = max(0, wave - ULTRALISK_WAVE_START)
     
     return zergling_count + hydralisk_count + ultralisk_count
 
@@ -360,31 +360,29 @@ def spawn_enemy():
     
     # Determine enemy type based on wave and what's left
     if wave < 3:
-        enemy_type = "zergling"
+        probs = WAVE_1_2_PROBS
     elif wave < 5:
-        if random.random() < 0.7:  # 70% chance for zergling, 30% for hydralisk
-            enemy_type = "zergling"
-        else:
-            enemy_type = "hydralisk"
+        probs = WAVE_3_4_PROBS
     else:
-        r = random.random()
-        if r < 0.6:  # 60% zergling
-            enemy_type = "zergling"
-        elif r < 0.9:  # 30% hydralisk
-            enemy_type = "hydralisk"
-        else:  # 10% ultralisk
-            enemy_type = "ultralisk"
+        probs = WAVE_5_PLUS_PROBS
     
-    enemies.append(Enemy(path, enemy_type))
-    remaining_zerg -= 1
-    return True
+    r = random.random()
+    cumulative = 0
+    for enemy_type, prob in probs.items():
+        cumulative += prob
+        if r <= cumulative:
+            enemies.append(Enemy(path, enemy_type))
+            remaining_zerg -= 1
+            return True
+    
+    return False
 
 def start_wave_phase():
     global current_phase, phase_timer, remaining_zerg
     
     current_phase = PHASE_WAVE
     remaining_zerg = calculate_wave_size()
-    phase_timer = max(5, 30 - wave) * FPS  # Time between spawns decreases with wave
+    phase_timer = max(MIN_WAVE_SPAWN_DELAY, WAVE_SPAWN_DELAY - wave * WAVE_SPAWN_DELAY_REDUCTION) * FPS
     
     # Play wave start sound
     wave_start_sound.play()
@@ -393,11 +391,11 @@ def start_build_phase():
     global current_phase, phase_timer, minerals, gas, wave
     
     current_phase = PHASE_BUILD
-    phase_timer = 30 * FPS  # 30 seconds for build phase
+    phase_timer = max(MIN_BUILD_TIME, INITIAL_BUILD_TIME - wave * BUILD_TIME_REDUCTION) * FPS
     
     # Give resources for completing wave
-    minerals += 100 + wave * 20
-    gas += 25 + wave * 5
+    minerals += BASE_MINERAL_REWARD + wave * MINERAL_REWARD_PER_WAVE
+    gas += BASE_GAS_REWARD + wave * GAS_REWARD_PER_WAVE
     
     # Increment wave counter
     wave += 1
@@ -427,8 +425,8 @@ def draw_ui():
     screen.blit(mineral_text, (10, 10))
     screen.blit(gas_text, (10, 40))
     screen.blit(lives_text, (10, 70))
-    screen.blit(wave_text, (SCREEN_WIDTH - 100, 10))
-    screen.blit(score_text, (SCREEN_WIDTH - 100, 40))
+    screen.blit(wave_text, (SCREEN_WIDTH - 150, 10))
+    screen.blit(score_text, (SCREEN_WIDTH - 150, 40))
     
     # Draw phase information
     if current_phase == PHASE_BUILD:
@@ -481,7 +479,7 @@ def draw_ui():
         # Create separate texts for better layout
         upgrade_label = small_font.render("Upgrade:", True, BLACK)
         upgrade_cost = small_font.render(f"{selected_tower.cost[0] * selected_tower.level} M / {selected_tower.cost[1] * selected_tower.level} G", True, BLACK)
-        sell_text = small_font.render(f"Sell: {int(selected_tower.cost[0] * 0.7 * selected_tower.level)} M", True, BLACK)
+        sell_text = small_font.render(f"Sell: {int(selected_tower.cost[0] * TOWER_SELL_MULTIPLIER * selected_tower.level)} M", True, BLACK)
         
         # Draw upgrade button - made wider
         pygame.draw.rect(screen, GREEN, (SCREEN_WIDTH - 200, SCREEN_HEIGHT - 180, 110, 30))
@@ -500,22 +498,48 @@ def draw_ui():
         screen.blit(start_text, (SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT - 40))
 
 def can_place_tower(x, y):
-    # Check if position is on a path tile
-    map_x = x // TILE_SIZE
-    map_y = y // TILE_SIZE
+    # Snap coordinates to grid intersections
+    grid_x = round(x / TILE_SIZE) * TILE_SIZE
+    grid_y = round(y / TILE_SIZE) * TILE_SIZE
     
+    # Convert to map coordinates
+    map_x = grid_x // TILE_SIZE
+    map_y = grid_y // TILE_SIZE
+    
+    # Check boundaries
     if map_x < 0 or map_x >= len(game_map[0]) or map_y < 0 or map_y >= len(game_map):
-        return False
-    
-    if game_map[map_y][map_x] == 1:  # Path tile
         return False
     
     # Check if position is already occupied by another tower
     for tower in towers:
-        if math.sqrt((tower.x - x)**2 + (tower.y - y)**2) < 30:
+        if abs(tower.x - grid_x) < TILE_SIZE/2 and abs(tower.y - grid_y) < TILE_SIZE/2:
             return False
     
-    return True
+    return True, grid_x, grid_y  # Return the snapped coordinates if valid
+
+def reset_game():
+    global minerals, gas, lives, score, wave, current_phase, phase_timer
+    global remaining_zerg, towers, enemies, projectiles, selected_tower
+    global spawn_cooldown, game_over, selected_tower_type
+    
+    # Reset player stats
+    minerals = STARTING_MINERALS
+    gas = STARTING_GAS
+    lives = STARTING_LIVES
+    score = 0
+    wave = 1
+    
+    # Reset game state
+    current_phase = PHASE_BUILD
+    phase_timer = INITIAL_BUILD_TIME * FPS
+    remaining_zerg = 0
+    towers = []
+    enemies = []
+    projectiles = []
+    selected_tower = None
+    spawn_cooldown = 0
+    game_over = False
+    selected_tower_type = "marine"
 
 # Main game loop
 running = True
@@ -537,6 +561,8 @@ while running:
                 selected_tower_type = "firebat"
             elif event.key == pygame.K_3:
                 selected_tower_type = "tank"
+            elif event.key == pygame.K_r:  # Allow restart at any time
+                reset_game()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # Left click
                 mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -561,14 +587,14 @@ while running:
                         minerals -= mineral_cost
                         gas -= gas_cost
                         selected_tower.level += 1
-                        selected_tower.damage = int(selected_tower.damage * 1.5)
-                        selected_tower.range = int(selected_tower.range * 1.2)
-                        selected_tower.fire_rate = max(10, int(selected_tower.fire_rate * 0.8))
+                        selected_tower.damage = int(selected_tower.damage * DAMAGE_UPGRADE_MULTIPLIER)
+                        selected_tower.range = int(selected_tower.range * RANGE_UPGRADE_MULTIPLIER)
+                        selected_tower.fire_rate = max(MIN_FIRE_RATE, int(selected_tower.fire_rate * FIRE_RATE_UPGRADE_MULTIPLIER))
                         # Play upgrade sound
                         upgrade_sound.play()
                 elif selected_tower and SCREEN_WIDTH - 80 <= mouse_x <= SCREEN_WIDTH - 10 and SCREEN_HEIGHT - 180 <= mouse_y <= SCREEN_HEIGHT - 150:
                     # Sell tower
-                    minerals += int(selected_tower.cost[0] * 0.7 * selected_tower.level)
+                    minerals += int(selected_tower.cost[0] * TOWER_SELL_MULTIPLIER * selected_tower.level)
                     towers.remove(selected_tower)
                     selected_tower = None
                     # Play sell sound
@@ -582,27 +608,30 @@ while running:
                             break
                     
                     # If no tower is clicked, try to place a new tower (only in build phase)
-                    if selected_tower is None and current_phase == PHASE_BUILD and can_place_tower(mouse_x, mouse_y):
-                        new_tower = Tower(mouse_x, mouse_y, selected_tower_type)
-                        mineral_cost, gas_cost = new_tower.cost
-                        
-                        if minerals >= mineral_cost and gas >= gas_cost:
-                            minerals -= mineral_cost
-                            gas -= gas_cost
-                            towers.append(new_tower)
-                            # Play build sound
-                            # build_sound.play()
+                    if selected_tower is None and current_phase == PHASE_BUILD:
+                        placement = can_place_tower(mouse_x, mouse_y)
+                        if placement:  # placement will be (True, grid_x, grid_y) if valid
+                            _, grid_x, grid_y = placement
+                            new_tower = Tower(grid_x, grid_y, selected_tower_type)
+                            mineral_cost, gas_cost = new_tower.cost
+                            
+                            if minerals >= mineral_cost and gas >= gas_cost:
+                                minerals -= mineral_cost
+                                gas -= gas_cost
+                                towers.append(new_tower)
+                                # Play build sound
+                                # build_sound.play()
     
     if game_over:
         # Display game over screen
         screen.fill(BLACK)
         game_over_text = game_font.render("GAME OVER", True, RED)
         score_text = game_font.render(f"Final Score: {score}", True, WHITE)
-        restart_text = game_font.render("Press ESC to quit", True, WHITE)
+        restart_text = game_font.render("Press R to restart, ESC to quit", True, WHITE)
         
         screen.blit(game_over_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 50))
         screen.blit(score_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2))
-        screen.blit(restart_text, (SCREEN_WIDTH//2 - 90, SCREEN_HEIGHT//2 + 50))
+        screen.blit(restart_text, (SCREEN_WIDTH//2 - 120, SCREEN_HEIGHT//2 + 50))
         
         # Play game over sound once
         if lives == 0:
