@@ -422,22 +422,25 @@ def draw_ui():
     wave_text = game_font.render(f"Wave: {wave}", True, WHITE)
     score_text = game_font.render(f"Score: {score}", True, WHITE)
     
-    screen.blit(mineral_text, (10, 10))
-    screen.blit(gas_text, (10, 40))
-    screen.blit(lives_text, (10, 70))
+    # Draw resources above tower buttons
+    screen.blit(mineral_text, (SCREEN_WIDTH - 210, SCREEN_HEIGHT - 190))
+    screen.blit(gas_text, (SCREEN_WIDTH - 210, SCREEN_HEIGHT - 160))
+    
+    # Draw wave and score at top right
     screen.blit(wave_text, (SCREEN_WIDTH - 150, 10))
     screen.blit(score_text, (SCREEN_WIDTH - 150, 40))
+    screen.blit(lives_text, (SCREEN_WIDTH - 150, 70))
     
     # Draw phase information
     if current_phase == PHASE_BUILD:
-        phase_text = game_font.render("BUILD PHASE", True, YELLOW)
-        timer_text = game_font.render(f"Next wave in: {phase_timer // FPS}s", True, YELLOW)
+        phase_text = game_font.render("BUILD PHASE", True, RED)
+        timer_text = game_font.render(f"Next wave in: {phase_timer // FPS}s", True, RED)
     else:
         phase_text = game_font.render("WAVE PHASE", True, RED)
         timer_text = game_font.render(f"Remaining Zerg: {remaining_zerg + len(enemies)}", True, RED)
     
-    screen.blit(phase_text, (SCREEN_WIDTH//2 - 70, 10))
-    screen.blit(timer_text, (SCREEN_WIDTH//2 - 100, 40))
+    screen.blit(phase_text, (SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT - 120))
+    screen.blit(timer_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT - 100))
     
     # Draw tower buttons with costs
     small_font = pygame.font.SysFont("Arial", 16)
