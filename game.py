@@ -997,7 +997,7 @@ while running:
     draw_ui()
     
     # Draw debug info
-    draw_debug_info()
+    # draw_debug_info()
     
     # Update display
     pygame.display.flip()
