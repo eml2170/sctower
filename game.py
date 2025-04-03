@@ -23,6 +23,8 @@ BLUE = (0, 0, 255)
 BROWN = (165, 42, 42)
 GRAY = (128, 128, 128)
 YELLOW = (255, 255, 0)
+PURPLE = (128, 0, 128)
+
 
 # Game variables
 FPS = 60
@@ -324,12 +326,12 @@ TILE_SIZE = 50
 
 # Define enemy path
 path = [
-    (0, 75),
-    (300, 75),
-    (300, 175),
-    (450, 175),
-    (450, 325),
-    (600, 325)
+    (0, 75),  #
+    (275, 75),      #
+    (275, 225),     #
+    (425, 225),              #
+    (425, 325),              #
+    (600, 325)                     #
 ]
 
 # Game state variables
@@ -412,7 +414,7 @@ def draw_map():
 
 def draw_path():
     for i in range(len(path) - 1):
-        pygame.draw.line(screen, BLACK, path[i], path[i+1], 3)
+        pygame.draw.line(screen, PURPLE, path[i], path[i+1], 3)
 
 def draw_ui():
     # Draw resources
