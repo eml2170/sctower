@@ -10,7 +10,7 @@ pygame.init()
 pygame.mixer.init()
 
 # Screen dimensions
-SCREEN_WIDTH = 840
+SCREEN_WIDTH = 860
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("StarCraft Tower Defense: Terran vs Zerg")
@@ -31,6 +31,10 @@ PURPLE = (128, 0, 128)
 FPS = 60
 clock = pygame.time.Clock()
 game_font = pygame.font.SysFont("Arial", 24)
+
+# Board position offset
+BOARD_OFFSET_X = 40
+BOARD_OFFSET_Y = 40
 
 # Asset paths
 ASSET_DIR = "assets"
@@ -515,7 +519,8 @@ class Enemy:
     def __init__(self, path, enemy_type):
         self.path = path
         self.path_index = 0
-        self.x, self.y = path[0]
+        # Apply offset when initializing enemy position
+        self.x, self.y = path[0][0] + BOARD_OFFSET_X, path[0][1] + BOARD_OFFSET_Y
         self.enemy_type = enemy_type
         self.progress = 0
         self.dead = False
@@ -550,8 +555,9 @@ class Enemy:
     
     def update(self):
         if self.path_index < len(self.path) - 1:
-            # Calculate direction to next point
-            target_x, target_y = self.path[self.path_index + 1]
+            # Calculate direction to next point (with offset)
+            target_x = self.path[self.path_index + 1][0] + BOARD_OFFSET_X
+            target_y = self.path[self.path_index + 1][1] + BOARD_OFFSET_Y
             dx = target_x - self.x
             dy = target_y - self.y
             distance = math.sqrt(dx**2 + dy**2)
@@ -611,6 +617,39 @@ path = [
     (425, 325),              #
     (600, 325)                     #
 ]
+
+# Create a function to draw the hatchery
+def draw_hatchery(surface):
+    # Hatchery position (at the start of the path)
+    hatchery_x = path[0][0] + BOARD_OFFSET_X - 10  # Slightly before path start
+    hatchery_y = path[0][1] + BOARD_OFFSET_Y
+    
+    # Base structure (circular mound)
+    hatchery_radius = 40
+    pygame.draw.circle(surface, (139, 69, 19), (hatchery_x, hatchery_y), hatchery_radius)  # Brown base
+    
+    # Creep (purple ground texture around the hatchery)
+    creep_radius = hatchery_radius + 15
+    pygame.draw.circle(surface, (128, 0, 128, 150), (hatchery_x, hatchery_y), creep_radius)
+    
+    # Main structure (dome)
+    pygame.draw.circle(surface, (160, 32, 240), (hatchery_x, hatchery_y - 10), hatchery_radius - 10)  # Purple dome
+    
+    # Entrance (where zerg come out)
+    entrance_width = 20
+    entrance_height = 15
+    pygame.draw.ellipse(surface, (0, 0, 0), 
+                        (hatchery_x - entrance_width//2, 
+                         hatchery_y - entrance_height//2 + 15, 
+                         entrance_width, entrance_height))
+    
+    # Add some texture/details
+    for i in range(3):
+        angle = math.pi/4 + i * 2*math.pi/3
+        spike_x = hatchery_x + int(math.cos(angle) * (hatchery_radius - 15))
+        spike_y = hatchery_y + int(math.sin(angle) * (hatchery_radius - 15)) - 15
+        spike_size = 7
+        pygame.draw.circle(surface, (220, 20, 60), (spike_x, spike_y), spike_size)  # Red spikes
 
 # Game state variables
 towers = []
@@ -680,16 +719,22 @@ def start_build_phase():
 def draw_map():
     for y in range(len(game_map)):
         for x in range(len(game_map[0])):
-            rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            rect = pygame.Rect(x * TILE_SIZE + BOARD_OFFSET_X, y * TILE_SIZE + BOARD_OFFSET_Y, TILE_SIZE, TILE_SIZE)
             if game_map[y][x] == 1:  # Path
                 pygame.draw.rect(screen, BROWN, rect)
             else:  # Buildable
                 pygame.draw.rect(screen, GREEN, rect)
                 pygame.draw.rect(screen, BLACK, rect, 1)
+    
+    # Draw the hatchery at the start of the path
+    draw_hatchery(screen)
 
 def draw_path():
     for i in range(len(path) - 1):
-        pygame.draw.line(screen, PURPLE, path[i], path[i+1], 3)
+        # Apply offset to path points when drawing
+        start_point = (path[i][0] + BOARD_OFFSET_X, path[i][1] + BOARD_OFFSET_Y)
+        end_point = (path[i+1][0] + BOARD_OFFSET_X, path[i+1][1] + BOARD_OFFSET_Y)
+        pygame.draw.line(screen, PURPLE, start_point, end_point, 3)
 
 def draw_ui():
     # Draw resources
@@ -716,8 +761,8 @@ def draw_ui():
         phase_text = game_font.render("WAVE PHASE", True, RED)
         timer_text = game_font.render(f"Remaining Zerg: {remaining_zerg + len(enemies)}", True, RED)
     
-    screen.blit(phase_text, (SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT - 120))
-    screen.blit(timer_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT - 100))
+    screen.blit(phase_text, (SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT - 100))
+    screen.blit(timer_text, (SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT - 80))
     
     # Draw tower buttons with costs
     small_font = pygame.font.SysFont("Arial", 16)
@@ -778,13 +823,17 @@ def draw_ui():
         screen.blit(start_text, (SCREEN_WIDTH//2 - 75, SCREEN_HEIGHT - 40))
 
 def can_place_tower(x, y):
+    # Adjust for offset when converting to grid coordinates
+    adjusted_x = x - BOARD_OFFSET_X
+    adjusted_y = y - BOARD_OFFSET_Y
+    
     # Snap coordinates to grid intersections
-    grid_x = round(x / TILE_SIZE) * TILE_SIZE
-    grid_y = round(y / TILE_SIZE) * TILE_SIZE
+    grid_x = round(adjusted_x / TILE_SIZE) * TILE_SIZE + BOARD_OFFSET_X
+    grid_y = round(adjusted_y / TILE_SIZE) * TILE_SIZE + BOARD_OFFSET_Y
     
     # Convert to map coordinates
-    map_x = grid_x // TILE_SIZE
-    map_y = grid_y // TILE_SIZE
+    map_x = (grid_x - BOARD_OFFSET_X) // TILE_SIZE
+    map_y = (grid_y - BOARD_OFFSET_Y) // TILE_SIZE
     
     # Check boundaries
     if map_x < 0 or map_x >= len(game_map[0]) or map_y < 0 or map_y >= len(game_map):
