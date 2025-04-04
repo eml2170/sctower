@@ -10,7 +10,7 @@ pygame.init()
 pygame.mixer.init()
 
 # Screen dimensions
-SCREEN_WIDTH = 860
+SCREEN_WIDTH = 880
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("StarCraft Tower Defense: Terran vs Zerg")
@@ -33,8 +33,8 @@ clock = pygame.time.Clock()
 game_font = pygame.font.SysFont("Arial", 24)
 
 # Board position offset
-BOARD_OFFSET_X = 40
-BOARD_OFFSET_Y = 40
+BOARD_OFFSET_X = 50
+BOARD_OFFSET_Y = 50
 
 # Asset paths
 ASSET_DIR = "assets"
@@ -625,11 +625,11 @@ def draw_hatchery(surface):
     hatchery_y = path[0][1] + BOARD_OFFSET_Y
     
     # Base structure (circular mound)
-    hatchery_radius = 40
+    hatchery_radius = 30
     pygame.draw.circle(surface, (139, 69, 19), (hatchery_x, hatchery_y), hatchery_radius)  # Brown base
     
     # Creep (purple ground texture around the hatchery)
-    creep_radius = hatchery_radius + 15
+    creep_radius = hatchery_radius + 10
     pygame.draw.circle(surface, (128, 0, 128, 150), (hatchery_x, hatchery_y), creep_radius)
     
     # Main structure (dome)
@@ -650,6 +650,49 @@ def draw_hatchery(surface):
         spike_y = hatchery_y + int(math.sin(angle) * (hatchery_radius - 15)) - 15
         spike_size = 7
         pygame.draw.circle(surface, (220, 20, 60), (spike_x, spike_y), spike_size)  # Red spikes
+
+# Create a function to draw the command center
+def draw_command_center(surface):
+    # Command Center position (at the end of the path)
+    cc_x = path[-1][0] + BOARD_OFFSET_X + 20  # Slightly after path end
+    cc_y = path[-1][1] + BOARD_OFFSET_Y
+    
+    # Base structure (rectangular building)
+    cc_width = 80
+    cc_height = 60
+    pygame.draw.rect(surface, (100, 100, 100), 
+                    (cc_x - cc_width//2, cc_y - cc_height//2, 
+                     cc_width, cc_height))
+    
+    # Main building (slightly smaller)
+    pygame.draw.rect(surface, (180, 180, 180), 
+                    (cc_x - cc_width//2 + 5, cc_y - cc_height//2 - 10, 
+                     cc_width - 10, cc_height - 10))
+    
+    # Entrance (where SCVs would come out)
+    entrance_width = 20
+    entrance_height = 15
+    pygame.draw.rect(surface, (50, 50, 50), 
+                    (cc_x - entrance_width//2, 
+                     cc_y + cc_height//2 - entrance_height - 5, 
+                     entrance_width, entrance_height))
+    
+    # Add Terran logo/symbol
+    logo_size = 15
+    pygame.draw.circle(surface, (0, 0, 150), (cc_x, cc_y - 15), logo_size)
+    pygame.draw.circle(surface, (180, 180, 180), (cc_x, cc_y - 15), logo_size - 3)
+    pygame.draw.line(surface, (0, 0, 150), 
+                    (cc_x - logo_size + 3, cc_y - 15), 
+                    (cc_x + logo_size - 3, cc_y - 15), 3)
+    
+    # Add some windows/lights
+    for i in range(4):
+        window_x = cc_x - cc_width//3 + i * (cc_width//4)
+        window_y = cc_y - cc_height//4
+        window_size = 5
+        pygame.draw.rect(surface, (255, 255, 150), 
+                       (window_x - window_size//2, window_y - window_size//2, 
+                        window_size, window_size))
 
 # Game state variables
 towers = []
@@ -728,6 +771,9 @@ def draw_map():
     
     # Draw the hatchery at the start of the path
     draw_hatchery(screen)
+    
+    # Draw the command center at the end of the path
+    draw_command_center(screen)
 
 def draw_path():
     for i in range(len(path) - 1):
