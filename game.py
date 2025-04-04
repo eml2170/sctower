@@ -61,8 +61,8 @@ def create_placeholder_images():
     # Create Marine placeholder
     marine_img = pygame.Surface((40, 40), pygame.SRCALPHA)
     pygame.draw.circle(marine_img, BLUE, (20, 20), 18)
-    pygame.draw.circle(marine_img, BLACK, (20, 20), 18, 2)
-    pygame.draw.rect(marine_img, BLACK, (10, 5, 20, 15))
+    pygame.draw.circle(marine_img, GRAY, (20, 20), 18, 2)
+    pygame.draw.rect(marine_img, GRAY, (10, 5, 20, 15))
     pygame.image.save(marine_img, os.path.join(IMG_DIR, "marine.png"))
     
     # Create Firebat placeholder
@@ -507,9 +507,9 @@ class Tower:
             pygame.draw.circle(surface, self.color, (self.x, self.y), self.range, 1)
         
         # Draw tower level
-        level_text = game_font.render(str(self.level), True, WHITE)
-        level_rect = level_text.get_rect(center=(self.x, self.y + 25))
-        surface.blit(level_text, level_rect)
+        # level_text = game_font.render(str(self.level), True, WHITE)
+        # level_rect = level_text.get_rect(center=(self.x, self.y + 25))
+        # surface.blit(level_text, level_rect)
 
 class Enemy:
     def __init__(self, path, enemy_type):
@@ -697,7 +697,7 @@ def draw_ui():
     gas_text = game_font.render(f"Gas: {gas}", True, GREEN)
     lives_text = game_font.render(f"Lives: {lives}", True, RED)
     wave_text = game_font.render(f"Wave: {wave}", True, WHITE)
-    score_text = game_font.render(f"Score: {score}", True, WHITE)
+    score_text = game_font.render(f"Score: {score}", True, BLACK)
     
     # Draw resources above tower buttons
     screen.blit(mineral_text, (SCREEN_WIDTH - 210, SCREEN_HEIGHT - 190))
@@ -710,8 +710,8 @@ def draw_ui():
     
     # Draw phase information
     if current_phase == PHASE_BUILD:
-        phase_text = game_font.render("BUILD PHASE", True, RED)
-        timer_text = game_font.render(f"Next wave in: {phase_timer // FPS}s", True, RED)
+        phase_text = game_font.render("BUILD PHASE", True, BLACK)
+        timer_text = game_font.render(f"Next wave in: {phase_timer // FPS}s", True, BLACK)
     else:
         phase_text = game_font.render("WAVE PHASE", True, RED)
         timer_text = game_font.render(f"Remaining Zerg: {remaining_zerg + len(enemies)}", True, RED)
@@ -733,18 +733,18 @@ def draw_ui():
     
     # Firebat button
     pygame.draw.rect(screen, RED, (SCREEN_WIDTH - 140, SCREEN_HEIGHT - 130, 60, 80))
-    firebat_text = small_font.render("Firebat", True, WHITE)
-    firebat_cost = small_font.render("75 M", True, WHITE)
-    firebat_cost2 = small_font.render("25 G", True, WHITE)
+    firebat_text = small_font.render("Firebat", True, BLACK)
+    firebat_cost = small_font.render("75 M", True, BLACK)
+    firebat_cost2 = small_font.render("25 G", True, BLACK)
     screen.blit(firebat_text, (SCREEN_WIDTH - 135, SCREEN_HEIGHT - 125))
     screen.blit(firebat_cost, (SCREEN_WIDTH - 125, SCREEN_HEIGHT - 95))
     screen.blit(firebat_cost2, (SCREEN_WIDTH - 125, SCREEN_HEIGHT - 75))
     
     # Tank button
     pygame.draw.rect(screen, GRAY, (SCREEN_WIDTH - 70, SCREEN_HEIGHT - 130, 60, 80))
-    tank_text = small_font.render("Tank", True, WHITE)
-    tank_cost = small_font.render("150 M", True, WHITE)
-    tank_cost2 = small_font.render("75 G", True, WHITE)
+    tank_text = small_font.render("Tank", True, BLACK)
+    tank_cost = small_font.render("150 M", True, BLACK)
+    tank_cost2 = small_font.render("75 G", True, BLACK)
     screen.blit(tank_text, (SCREEN_WIDTH - 60, SCREEN_HEIGHT - 125))
     screen.blit(tank_cost, (SCREEN_WIDTH - 65, SCREEN_HEIGHT - 95))
     screen.blit(tank_cost2, (SCREEN_WIDTH - 65, SCREEN_HEIGHT - 75))
@@ -975,7 +975,7 @@ while running:
                 projectiles.remove(projectile)
     
     # Drawing
-    screen.fill(BLACK)
+    screen.fill(WHITE)
     
     # Draw game map
     draw_map()
