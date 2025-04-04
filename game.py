@@ -36,8 +36,14 @@ game_font = pygame.font.SysFont("Arial", 24)
 BOARD_OFFSET_X = 50
 BOARD_OFFSET_Y = 50
 
-# Asset paths
-ASSET_DIR = "assets"
+# Handle PyInstaller bundling
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+# Then replace all asset paths with:
+ASSET_DIR = resource_path("assets")
 IMG_DIR = os.path.join(ASSET_DIR, "images")
 SOUND_DIR = os.path.join(ASSET_DIR, "sounds")
 
